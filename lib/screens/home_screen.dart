@@ -1,65 +1,102 @@
 import 'package:flutter/material.dart';
+import '../models/language.dart';
+import '../widgets/language_selector.dart';
+import '../widgets/nexa_logo.dart';
 import 'language_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  Language idiomaPersona1 = idiomasDisponibles[0];
+  Language idiomaPersona2 = idiomasDisponibles[1];
+
+  void intercambiarIdiomas() {
+    setState(() {
+      final temp = idiomaPersona1;
+      idiomaPersona1 = idiomaPersona2;
+      idiomaPersona2 = temp;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      body: Center(
+      appBar: AppBar(
+        title: const Text('NEXA Voice AI'),
+        centerTitle: true,
+      ),
+      body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(30),
+          padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.language,
-                color: Colors.blue,
-                size: 120,
+              const NexaLogo(),
+
+              const SizedBox(height: 35),
+
+              LanguageSelector(
+                titulo: '👤 Persona 1',
+                idiomaSeleccionado: idiomaPersona1,
+                onChanged: (value) {
+                  setState(() {
+                    idiomaPersona1 = value!;
+                  });
+                },
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
-              const Text(
-                'NEXA Voice AI',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: Colors.blue.shade100,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.swap_vert,
+                    color: Colors.blue,
+                  ),
+                  onPressed: intercambiarIdiomas,
                 ),
               ),
 
-              const SizedBox(height: 15),
+              const SizedBox(height: 20),
 
-              const Text(
-                'Habla. Escucha. Traduce.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 18,
-                ),
+              LanguageSelector(
+                titulo: '👤 Persona 2',
+                idiomaSeleccionado: idiomaPersona2,
+                onChanged: (value) {
+                  setState(() {
+                    idiomaPersona2 = value!;
+                  });
+                },
               ),
 
-              const SizedBox(height: 60),
+              const Spacer(),
 
               SizedBox(
                 width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-  onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const LanguageScreen(),
-      ),
-    );
-  },
-                  child: const Text(
-                    'COMENZAR',
-                    style: TextStyle(fontSize: 18),
+                height: 58,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.mic),
+                  label: const Text(
+                    'INICIAR CONVERSACIÓN',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const LanguageScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
