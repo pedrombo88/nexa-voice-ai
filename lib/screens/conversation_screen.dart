@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/translation.dart';
 import '../services/speech/speech_service.dart';
+import '../services/translation/fake_translation_service.dart';
 import '../widgets/conversation_bubble.dart';
 import '../widgets/microphone_button.dart';
 
@@ -14,6 +15,7 @@ class ConversationScreen extends StatefulWidget {
 
 class _ConversationScreenState extends State<ConversationScreen> {
   final SpeechService _speechService = SpeechService();
+  final FakeTranslationService _translator = FakeTranslationService();
 
   bool _isListening = false;
 
@@ -56,12 +58,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            "No se pudo iniciar el reconocimiento de voz.",
-          ),
+          content: Text("No se pudo iniciar el reconocimiento de voz."),
         ),
       );
-
       return;
     }
 
@@ -71,8 +70,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
     await _speechService.startListening(
       localeId: "es_ES",
-      onResult: (text) {
+      onResult: (text) async {
         if (text.isEmpty) return;
+
+        final translated = await _translator.translate(
+          text: text,
+          sourceLanguage: "es",
+          targetLanguage: "en",
+        );
+
+        if (!mounted) return;
 
         setState(() {
           _messages.add(
@@ -80,7 +87,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
               id: DateTime.now().millisecondsSinceEpoch.toString(),
               speakerId: "persona1",
               originalText: text,
-              translatedText: "(Pendiente de traducir)",
+              translatedText: translated,
               sourceLanguage: "es",
               targetLanguage: "en",
               timestamp: DateTime.now(),
