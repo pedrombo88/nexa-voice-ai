@@ -1,99 +1,85 @@
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
-class LanguageScreen extends StatelessWidget {
+class LanguageScreen extends StatefulWidget {
   const LanguageScreen({super.key});
+
+  @override
+  State<LanguageScreen> createState() => _LanguageScreenState();
+}
+
+class _LanguageScreenState extends State<LanguageScreen> {
+  final SpeechToText speech = SpeechToText();
+
+  bool escuchando = false;
+  String textoReconocido = "Pulsa el micrófono para empezar";
+
+  Future<void> escuchar() async {
+    if (!escuchando) {
+      bool disponible = await speech.initialize();
+
+      if (disponible) {
+        setState(() {
+          escuchando = true;
+        });
+
+        speech.listen(
+          onResult: (resultado) {
+            setState(() {
+              textoReconocido = resultado.recognizedWords;
+            });
+          },
+        );
+      }
+    } else {
+      await speech.stop();
+
+      setState(() {
+        escuchando = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    speech.stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Seleccionar idiomas'),
+        title: const Text("Conversación"),
         centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
 
-            const Text(
-              'Idioma de la Persona 1',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+            Expanded(
+              child: Center(
+                child: Text(
+                  textoReconocido,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
 
-            const SizedBox(height: 10),
-
-            DropdownButtonFormField<String>(
-              value: 'Español',
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+            FloatingActionButton(
+              onPressed: escuchar,
+              child: Icon(
+                escuchando ? Icons.stop : Icons.mic,
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'Español',
-                  child: Text('🇪🇸 Español'),
-                ),
-                DropdownMenuItem(
-                  value: 'Inglés',
-                  child: Text('🇬🇧 Inglés'),
-                ),
-                DropdownMenuItem(
-                  value: 'Francés',
-                  child: Text('🇫🇷 Francés'),
-                ),
-              ],
-              onChanged: (value) {},
             ),
 
             const SizedBox(height: 30),
-
-            const Text(
-              'Idioma de la Persona 2',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            DropdownButtonFormField<String>(
-              value: 'Inglés',
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'Español',
-                  child: Text('🇪🇸 Español'),
-                ),
-                DropdownMenuItem(
-                  value: 'Inglés',
-                  child: Text('🇬🇧 Inglés'),
-                ),
-                DropdownMenuItem(
-                  value: 'Francés',
-                  child: Text('🇫🇷 Francés'),
-                ),
-              ],
-              onChanged: (value) {},
-            ),
-
-            const Spacer(),
-
-            SizedBox(
-              height: 55,
-              child: ElevatedButton(
-                onPressed: () {},
-                child: const Text('INICIAR CONVERSACIÓN'),
-              ),
-            ),
-
-            const SizedBox(height: 20),
           ],
         ),
       ),

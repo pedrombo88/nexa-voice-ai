@@ -3,6 +3,7 @@ import '../models/language.dart';
 import '../widgets/language_selector.dart';
 import '../widgets/nexa_logo.dart';
 import 'language_screen.dart';
+import 'conversation_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -93,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const LanguageScreen(),
+                        builder: (_) => const ConversationScreen(),
                       ),
                     );
                   },
