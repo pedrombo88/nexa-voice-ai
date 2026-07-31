@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/translation.dart';
+import '../providers/translation_provider.dart';
 import '../services/speech/speech_service.dart';
-import '../services/translation/fake_translation_service.dart';
+import '../services/tts/tts_service.dart';
 import '../widgets/conversation_bubble.dart';
 import '../widgets/microphone_button.dart';
 
@@ -15,7 +16,8 @@ class ConversationScreen extends StatefulWidget {
 
 class _ConversationScreenState extends State<ConversationScreen> {
   final SpeechService _speechService = SpeechService();
-  final FakeTranslationService _translator = FakeTranslationService();
+  final TtsService _ttsService = TtsService();
+  final _translator = TranslationProvider.getTranslator();
 
   bool _isListening = false;
 
@@ -79,6 +81,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
           targetLanguage: "en",
         );
 
+        // 🔊 Reproducir la traducción
+        await _ttsService.speak(
+          text: translated,
+          language: "en-US",
+        );
+
         if (!mounted) return;
 
         setState(() {
@@ -96,6 +104,13 @@ class _ConversationScreenState extends State<ConversationScreen> {
         });
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _speechService.stopListening();
+    _ttsService.stop();
+    super.dispose();
   }
 
   @override
