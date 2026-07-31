@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:speech_to_text/speech_to_text.dart';
+import 'package:provider/provider.dart';
+
+import '../models/language.dart';
+import '../providers/language_provider.dart';
+import 'conversation_screen.dart';
 
 class LanguageScreen extends StatefulWidget {
   const LanguageScreen({super.key});
@@ -9,77 +13,108 @@ class LanguageScreen extends StatefulWidget {
 }
 
 class _LanguageScreenState extends State<LanguageScreen> {
-  final SpeechToText speech = SpeechToText();
-
-  bool escuchando = false;
-  String textoReconocido = "Pulsa el micrófono para empezar";
-
-  Future<void> escuchar() async {
-    if (!escuchando) {
-      bool disponible = await speech.initialize();
-
-      if (disponible) {
-        setState(() {
-          escuchando = true;
-        });
-
-        speech.listen(
-          onResult: (resultado) {
-            setState(() {
-              textoReconocido = resultado.recognizedWords;
-            });
-          },
-        );
-      }
-    } else {
-      await speech.stop();
-
-      setState(() {
-        escuchando = false;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    speech.stop();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<LanguageProvider>();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Conversación"),
+        title: const Text("Seleccionar idiomas"),
         centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const SizedBox(height: 20),
+
+            const Text(
+              "Idioma de la Persona 1",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            DropdownButtonFormField<Language>(
+              initialValue: provider.person1Language,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+              ),
+              items: idiomasDisponibles.map((language) {
+                return DropdownMenuItem<Language>(
+                  value: language,
+                  child: Text(
+                    "${language.bandera} ${language.nombre}",
+                  ),
+                );
+              }).toList(),
+              onChanged: (language) {
+                if (language != null) {
+                  context
+                      .read<LanguageProvider>()
+                      .setPerson1Language(language);
+                }
+              },
+            ),
+
             const SizedBox(height: 30),
 
-            Expanded(
-              child: Center(
-                child: Text(
-                  textoReconocido,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+            const Text(
+              "Idioma de la Persona 2",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            DropdownButtonFormField<Language>(
+              initialValue: provider.person2Language,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+              ),
+              items: idiomasDisponibles.map((language) {
+                return DropdownMenuItem<Language>(
+                  value: language,
+                  child: Text(
+                    "${language.bandera} ${language.nombre}",
                   ),
+                );
+              }).toList(),
+              onChanged: (language) {
+                if (language != null) {
+                  context
+                      .read<LanguageProvider>()
+                      .setPerson2Language(language);
+                }
+              },
+            ),
+
+            const Spacer(),
+
+            SizedBox(
+              height: 55,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ConversationScreen(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  "INICIAR CONVERSACIÓN",
                 ),
               ),
             ),
 
-            FloatingActionButton(
-              onPressed: escuchar,
-              child: Icon(
-                escuchando ? Icons.stop : Icons.mic,
-              ),
-            ),
-
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
           ],
         ),
       ),

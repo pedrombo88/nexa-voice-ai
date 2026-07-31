@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../models/conversation_mode.dart';
 import '../models/translation.dart';
+import '../providers/language_provider.dart';
 import '../providers/translation_provider.dart';
 import '../services/speech/speech_service.dart';
 import '../services/tts/tts_service.dart';
@@ -20,38 +23,35 @@ class _ConversationScreenState extends State<ConversationScreen> {
   final _translator = TranslationProvider.getTranslator();
 
   bool _isListening = false;
+  ConversationMode? _currentMode;
 
-  final List<Translation> _messages = [
-    Translation(
-      id: "1",
-      speakerId: "persona1",
-      originalText: "Hola, ¿cómo estás?",
-      translatedText: "Hello, how are you?",
-      sourceLanguage: "es",
-      targetLanguage: "en",
-      timestamp: DateTime.now(),
-    ),
-    Translation(
-      id: "2",
-      speakerId: "persona2",
-      originalText: "I'm fine, thank you.",
-      translatedText: "Estoy bien, gracias.",
-      sourceLanguage: "en",
-      targetLanguage: "es",
-      timestamp: DateTime.now(),
-    ),
-  ];
+  final List<Translation> _messages = [];
 
-  Future<void> _toggleListening() async {
+  Future<void> _toggleListening(ConversationMode mode) async {
     if (_isListening) {
       await _speechService.stopListening();
 
+      if (!mounted) return;
+
       setState(() {
         _isListening = false;
+        _currentMode = null;
       });
 
       return;
     }
+
+    if (!mounted) return;
+
+    final languageProvider = context.read<LanguageProvider>();
+
+    final source = mode == ConversationMode.person1
+        ? languageProvider.person1Language
+        : languageProvider.person2Language;
+
+    final target = mode == ConversationMode.person1
+        ? languageProvider.person2Language
+        : languageProvider.person1Language;
 
     final initialized = await _speechService.initialize();
 
@@ -68,23 +68,23 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
     setState(() {
       _isListening = true;
+      _currentMode = mode;
     });
 
     await _speechService.startListening(
-      localeId: "es_ES",
+      localeId: source.speechLocale,
       onResult: (text) async {
         if (text.isEmpty) return;
 
         final translated = await _translator.translate(
           text: text,
-          sourceLanguage: "es",
-          targetLanguage: "en",
+          sourceLanguage: source.codigo,
+          targetLanguage: target.codigo,
         );
 
-        // 🔊 Reproducir la traducción
         await _ttsService.speak(
           text: translated,
-          language: "en-US",
+          language: target.ttsLocale,
         );
 
         if (!mounted) return;
@@ -93,11 +93,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
           _messages.add(
             Translation(
               id: DateTime.now().millisecondsSinceEpoch.toString(),
-              speakerId: "persona1",
+              speakerId:
+                  mode == ConversationMode.person1 ? "persona1" : "persona2",
               originalText: text,
               translatedText: translated,
-              sourceLanguage: "es",
-              targetLanguage: "en",
+              sourceLanguage: source.codigo,
+              targetLanguage: target.codigo,
               timestamp: DateTime.now(),
             ),
           );
@@ -115,16 +116,40 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final languageProvider = context.watch<LanguageProvider>();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("NEXA Voice AI"),
+        title: Text(
+          "${languageProvider.person1Language.bandera} ${languageProvider.person1Language.nombre} ↔ ${languageProvider.person2Language.bandera} ${languageProvider.person2Language.nombre}",
+        ),
         centerTitle: true,
       ),
       body: Column(
         children: [
+          const SizedBox(height: 16),
+
+          Text(
+            "${languageProvider.person1Language.bandera} ${languageProvider.person1Language.nombre}",
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          MicrophoneButton(
+            isListening:
+                _isListening && _currentMode == ConversationMode.person1,
+            onPressed: () => _toggleListening(ConversationMode.person1),
+          ),
+
+          const Divider(height: 40),
+
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final message = _messages[index];
@@ -138,11 +163,25 @@ class _ConversationScreenState extends State<ConversationScreen> {
               },
             ),
           ),
+
+          const Divider(height: 40),
+
+          Text(
+            "${languageProvider.person2Language.bandera} ${languageProvider.person2Language.nombre}",
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
+            padding: const EdgeInsets.only(bottom: 20),
             child: MicrophoneButton(
-              isListening: _isListening,
-              onPressed: _toggleListening,
+              isListening:
+                  _isListening && _currentMode == ConversationMode.person2,
+              onPressed: () => _toggleListening(ConversationMode.person2),
             ),
           ),
         ],

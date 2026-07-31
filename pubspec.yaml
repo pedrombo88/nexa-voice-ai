@@ -37,6 +37,7 @@ dependencies:
   speech_to_text: ^7.4.0
   google_mlkit_translation: ^0.14.0
   flutter_tts: ^4.2.5
+  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:
