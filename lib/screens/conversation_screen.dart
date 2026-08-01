@@ -7,8 +7,10 @@ import '../providers/language_provider.dart';
 import '../providers/translation_provider.dart';
 import '../services/speech/speech_service.dart';
 import '../services/tts/tts_service.dart';
-import '../widgets/conversation_bubble.dart';
-import '../widgets/microphone_button.dart';
+import '../widgets/conversation/conversation_header.dart';
+import '../widgets/conversation/conversation_list.dart';
+import '../widgets/conversation/listening_indicator.dart';
+import '../widgets/conversation/speaker_panel.dart';
 
 class ConversationScreen extends StatefulWidget {
   const ConversationScreen({super.key});
@@ -25,6 +27,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _isListening = false;
   ConversationMode? _currentMode;
 
+  ListeningState _state = ListeningState.idle;
+
   final List<Translation> _messages = [];
 
   Future<void> _toggleListening(ConversationMode mode) async {
@@ -36,12 +40,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
       setState(() {
         _isListening = false;
         _currentMode = null;
+        _state = ListeningState.idle;
       });
 
       return;
     }
-
-    if (!mounted) return;
 
     final languageProvider = context.read<LanguageProvider>();
 
@@ -63,12 +66,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
           content: Text("No se pudo iniciar el reconocimiento de voz."),
         ),
       );
+
       return;
     }
 
     setState(() {
       _isListening = true;
       _currentMode = mode;
+      _state = ListeningState.listening;
     });
 
     await _speechService.startListening(
@@ -76,11 +81,23 @@ class _ConversationScreenState extends State<ConversationScreen> {
       onResult: (text) async {
         if (text.isEmpty) return;
 
+        if (!mounted) return;
+
+        setState(() {
+          _state = ListeningState.translating;
+        });
+
         final translated = await _translator.translate(
           text: text,
           sourceLanguage: source.codigo,
           targetLanguage: target.codigo,
         );
+
+        if (!mounted) return;
+
+        setState(() {
+          _state = ListeningState.speaking;
+        });
 
         await _ttsService.speak(
           text: translated,
@@ -93,8 +110,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
           _messages.add(
             Translation(
               id: DateTime.now().millisecondsSinceEpoch.toString(),
-              speakerId:
-                  mode == ConversationMode.person1 ? "persona1" : "persona2",
+              speakerId: mode == ConversationMode.person1
+                  ? "persona1"
+                  : "persona2",
               originalText: text,
               translatedText: translated,
               sourceLanguage: source.codigo,
@@ -102,6 +120,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
               timestamp: DateTime.now(),
             ),
           );
+
+          _state = ListeningState.idle;
         });
       },
     );
@@ -120,69 +140,40 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "${languageProvider.person1Language.bandera} ${languageProvider.person1Language.nombre} ↔ ${languageProvider.person2Language.bandera} ${languageProvider.person2Language.nombre}",
-        ),
+        title: const Text("NEXA Voice AI"),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          const SizedBox(height: 16),
-
-          Text(
-            "${languageProvider.person1Language.bandera} ${languageProvider.person1Language.nombre}",
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          ConversationHeader(
+            person1: languageProvider.person1Language,
+            person2: languageProvider.person2Language,
           ),
 
-          const SizedBox(height: 10),
-
-          MicrophoneButton(
-            isListening:
-                _isListening && _currentMode == ConversationMode.person1,
-            onPressed: () => _toggleListening(ConversationMode.person1),
+          ListeningIndicator(
+            state: _state,
           ),
 
-          const Divider(height: 40),
+          SpeakerPanel(
+            language: languageProvider.person1Language,
+            isListening: _isListening &&
+                _currentMode == ConversationMode.person1,
+            onMicrophonePressed: () =>
+                _toggleListening(ConversationMode.person1),
+          ),
 
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-
-                return ConversationBubble(
-                  speaker: message.speakerId,
-                  originalText: message.originalText,
-                  translatedText: message.translatedText,
-                  isMe: message.speakerId == "persona1",
-                );
-              },
+            child: ConversationList(
+              messages: _messages,
             ),
           ),
 
-          const Divider(height: 40),
-
-          Text(
-            "${languageProvider.person2Language.bandera} ${languageProvider.person2Language.nombre}",
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: MicrophoneButton(
-              isListening:
-                  _isListening && _currentMode == ConversationMode.person2,
-              onPressed: () => _toggleListening(ConversationMode.person2),
-            ),
+          SpeakerPanel(
+            language: languageProvider.person2Language,
+            isListening: _isListening &&
+                _currentMode == ConversationMode.person2,
+            onMicrophonePressed: () =>
+                _toggleListening(ConversationMode.person2),
           ),
         ],
       ),
