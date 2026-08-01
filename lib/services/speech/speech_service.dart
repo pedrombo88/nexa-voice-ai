@@ -1,54 +1,59 @@
+import 'dart:async';
+
 import 'package:speech_to_text/speech_to_text.dart';
 
 class SpeechService {
   final SpeechToText _speech = SpeechToText();
 
-  bool _isInitialized = false;
+  bool _initialized = false;
   bool _isListening = false;
 
   bool get isListening => _isListening;
 
   Future<bool> initialize() async {
-    if (_isInitialized) return true;
+    if (_initialized) return true;
 
-    _isInitialized = await _speech.initialize(
-      onStatus: (status) {
-        print("🎤 Estado: $status");
-      },
-      onError: (error) {
-        print("❌ Error: ${error.errorMsg}");
-      },
-    );
+    _initialized = await _speech.initialize();
 
-    print("Inicializado: $_isInitialized");
-
-    return _isInitialized;
+    return _initialized;
   }
 
-  Future<void> startListening({
+  Future<String?> listen({
     required String localeId,
-    required Function(String text) onResult,
   }) async {
-    if (!_isInitialized) {
+    if (!_initialized) {
       final ok = await initialize();
 
       if (!ok) {
-        print("No se pudo inicializar SpeechToText");
-        return;
+        return null;
       }
     }
 
-    if (_isListening) return;
+    if (_isListening) {
+      return null;
+    }
+
+    final completer = Completer<String?>();
 
     _isListening = true;
 
     await _speech.listen(
       localeId: localeId,
       listenMode: ListenMode.confirmation,
-      onResult: (result) {
-        onResult(result.recognizedWords);
+      onResult: (result) async {
+        if (!result.finalResult) return;
+
+        await _speech.stop();
+
+        _isListening = false;
+
+        if (!completer.isCompleted) {
+          completer.complete(result.recognizedWords);
+        }
       },
     );
+
+    return completer.future;
   }
 
   Future<void> stopListening() async {
@@ -66,15 +71,15 @@ class SpeechService {
   }
 
   Future<List<LocaleName>> getAvailableLanguages() async {
-    if (!_isInitialized) {
+    if (!_initialized) {
       await initialize();
     }
 
-    return await _speech.locales();
+    return _speech.locales();
   }
 
   Future<String?> getSystemLanguage() async {
-    if (!_isInitialized) {
+    if (!_initialized) {
       await initialize();
     }
 

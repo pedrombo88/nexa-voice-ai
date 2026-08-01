@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+
 import '../models/conversation_mode.dart';
 import '../models/translation.dart';
 import '../providers/language_provider.dart';
@@ -20,6 +21,8 @@ class ConversationScreen extends StatefulWidget {
 }
 
 class _ConversationScreenState extends State<ConversationScreen> {
+  
+
   final SpeechService _speechService = SpeechService();
   final TtsService _ttsService = TtsService();
   final _translator = TranslationProvider.getTranslator();
@@ -76,55 +79,62 @@ class _ConversationScreenState extends State<ConversationScreen> {
       _state = ListeningState.listening;
     });
 
-    await _speechService.startListening(
+    final text = await _speechService.listen(
       localeId: source.speechLocale,
-      onResult: (text) async {
-        if (text.isEmpty) return;
+    );
 
-        if (!mounted) return;
+    if (!mounted) return;
 
-        setState(() {
-          _state = ListeningState.translating;
-        });
+    if (text == null || text.isEmpty) {
+      setState(() {
+        _isListening = false;
+        _currentMode = null;
+        _state = ListeningState.idle;
+      });
+      return;
+    }
 
-        final translated = await _translator.translate(
-          text: text,
+    setState(() {
+      _state = ListeningState.translating;
+    });
+
+    final translated = await _translator.translate(
+      text: text,
+      sourceLanguage: source.codigo,
+      targetLanguage: target.codigo,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _state = ListeningState.speaking;
+    });
+
+    await _ttsService.speak(
+      text: translated,
+      language: target.ttsLocale,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _messages.add(
+        Translation(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          speakerId:
+              mode == ConversationMode.person1 ? "persona1" : "persona2",
+          originalText: text,
+          translatedText: translated,
           sourceLanguage: source.codigo,
           targetLanguage: target.codigo,
-        );
+          timestamp: DateTime.now(),
+        ),
+      );
 
-        if (!mounted) return;
-
-        setState(() {
-          _state = ListeningState.speaking;
-        });
-
-        await _ttsService.speak(
-          text: translated,
-          language: target.ttsLocale,
-        );
-
-        if (!mounted) return;
-
-        setState(() {
-          _messages.add(
-            Translation(
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              speakerId: mode == ConversationMode.person1
-                  ? "persona1"
-                  : "persona2",
-              originalText: text,
-              translatedText: translated,
-              sourceLanguage: source.codigo,
-              targetLanguage: target.codigo,
-              timestamp: DateTime.now(),
-            ),
-          );
-
-          _state = ListeningState.idle;
-        });
-      },
-    );
+      _isListening = false;
+      _currentMode = null;
+      _state = ListeningState.idle;
+    });
   }
 
   @override
@@ -156,8 +166,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
           SpeakerPanel(
             language: languageProvider.person1Language,
-            isListening: _isListening &&
-                _currentMode == ConversationMode.person1,
+            isListening:
+                _isListening && _currentMode == ConversationMode.person1,
             onMicrophonePressed: () =>
                 _toggleListening(ConversationMode.person1),
           ),
@@ -170,8 +180,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
           SpeakerPanel(
             language: languageProvider.person2Language,
-            isListening: _isListening &&
-                _currentMode == ConversationMode.person2,
+            isListening:
+                _isListening && _currentMode == ConversationMode.person2,
             onMicrophonePressed: () =>
                 _toggleListening(ConversationMode.person2),
           ),

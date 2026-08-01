@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/language.dart';
 import '../widgets/language_selector.dart';
 import '../widgets/nexa_logo.dart';
-import 'language_screen.dart';
+
 import 'conversation_screen.dart';
 
 class HomeScreen extends StatefulWidget {
