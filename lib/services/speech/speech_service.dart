@@ -1,90 +1,214 @@
-import 'dart:async';
-
+import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 class SpeechService {
   final SpeechToText _speech = SpeechToText();
 
   bool _initialized = false;
-  bool _isListening = false;
+  String _lastWords = '';
 
-  bool get isListening => _isListening;
+  bool get isInitialized => _initialized;
+
+  bool get isListening => _speech.isListening;
+
+  // ============================================================
+  // INICIALIZAR
+  // ============================================================
 
   Future<bool> initialize() async {
-    if (_initialized) return true;
+    if (_initialized) {
+      return true;
+    }
 
-    _initialized = await _speech.initialize();
+    _initialized = await _speech.initialize(
+      onStatus: (status) {
+        debugPrint('NEXA SPEECH STATUS: $status');
+      },
+      onError: (error) {
+        debugPrint(
+          'NEXA SPEECH ERROR: '
+          '${error.errorMsg} '
+          'permanent=${error.permanent}',
+        );
+      },
+      debugLogging: true,
+    );
+
+    debugPrint(
+      'NEXA SPEECH INITIALIZED: $_initialized',
+    );
 
     return _initialized;
   }
 
-  Future<String?> listen({
+  // ============================================================
+  // EMPEZAR A ESCUCHAR
+  // ============================================================
+
+  Future<bool> startListening({
     required String localeId,
   }) async {
-    if (!_initialized) {
-      final ok = await initialize();
+    if (!await initialize()) {
+      debugPrint('NEXA SPEECH: INITIALIZATION FAILED');
+      return false;
+    }
 
-      if (!ok) {
-        return null;
+    if (_speech.isListening) {
+      debugPrint('NEXA SPEECH: ALREADY LISTENING');
+      return true;
+    }
+
+    _lastWords = '';
+
+    debugPrint(
+      'NEXA SPEECH: START LISTENING '
+      'locale=$localeId',
+    );
+
+    try {
+      var started = await _startRecognizer(localeId);
+
+      // Primer intento fallido que no sea por iniciativa del usuario:
+      // reintenta una vez (a veces el motor no arranca a la primera).
+      if (!started) {
+        debugPrint('NEXA SPEECH: RETRY START LISTENING');
+        await Future<void>.delayed(
+          const Duration(milliseconds: 400),
+        );
+
+        started = await _startRecognizer(localeId);
       }
+
+      debugPrint(
+        'NEXA SPEECH: LISTEN STARTED '
+        'isListening=${_speech.isListening}',
+      );
+
+      return started || _speech.isListening;
+    } catch (e) {
+      debugPrint(
+        'NEXA SPEECH START ERROR: $e',
+      );
+
+      return false;
     }
+  }
 
-    if (_isListening) {
-      return null;
-    }
-
-    final completer = Completer<String?>();
-
-    _isListening = true;
-
+  Future<bool> _startRecognizer(String localeId) async {
     await _speech.listen(
-      localeId: localeId,
-      listenMode: ListenMode.confirmation,
-      onResult: (result) async {
-        if (!result.finalResult) return;
+      listenOptions: SpeechListenOptions(
+        localeId: localeId,
+        listenMode: ListenMode.confirmation,
+        cancelOnError: false,
+        partialResults: true,
+        pauseFor: const Duration(seconds: 10),
+        enableHapticFeedback: true,
+      ),
+      onResult: (result) {
+        final words = result.recognizedWords.trim();
 
-        await _speech.stop();
+        debugPrint(
+          'NEXA SPEECH RESULT: '
+          '"$words" '
+          'final=${result.finalResult}',
+        );
 
-        _isListening = false;
-
-        if (!completer.isCompleted) {
-          completer.complete(result.recognizedWords);
+        if (words.isNotEmpty) {
+          _lastWords = words;
         }
       },
     );
 
-    return completer.future;
+    return _speech.isListening;
   }
 
-  Future<void> stopListening() async {
-    if (!_isListening) return;
+  // ============================================================
+  // DETENER ESCUCHA
+  // ============================================================
 
-    await _speech.stop();
+  Future<String?> stopListening() async {
+    debugPrint('NEXA SPEECH: STOP REQUESTED');
 
-    _isListening = false;
+    if (_speech.isListening) {
+      try {
+        await _speech.stop();
+      } catch (e) {
+        debugPrint(
+          'NEXA SPEECH STOP ERROR: $e',
+        );
+      }
+
+      // El callback del resultado final puede llegar justo después
+      // de stop(). Sin este margen se pierden las últimas palabras.
+      if (_lastWords.trim().isEmpty) {
+        await Future<void>.delayed(
+          const Duration(milliseconds: 800),
+        );
+      }
+    }
+
+    final text = _lastWords.trim();
+
+    debugPrint(
+      'NEXA SPEECH: STOPPED text="$text"',
+    );
+
+    if (text.isEmpty) {
+      return null;
+    }
+
+    return text;
   }
+
+  // ============================================================
+  // CANCELAR
+  // ============================================================
 
   Future<void> cancelListening() async {
-    await _speech.cancel();
+    debugPrint('NEXA SPEECH: CANCEL');
 
-    _isListening = false;
+    if (_speech.isListening) {
+      await _speech.cancel();
+    }
+
+    _lastWords = '';
   }
 
+  // ============================================================
+  // IDIOMAS
+  // ============================================================
+
   Future<List<LocaleName>> getAvailableLanguages() async {
-    if (!_initialized) {
-      await initialize();
+    if (!await initialize()) {
+      return [];
     }
 
     return _speech.locales();
   }
 
+  // ============================================================
+  // IDIOMA DEL SISTEMA
+  // ============================================================
+
   Future<String?> getSystemLanguage() async {
-    if (!_initialized) {
-      await initialize();
+    if (!await initialize()) {
+      return null;
     }
 
     final locale = await _speech.systemLocale();
 
     return locale?.localeId;
+  }
+
+  // ============================================================
+  // DISPOSE
+  // ============================================================
+
+  Future<void> dispose() async {
+    if (_speech.isListening) {
+      await _speech.cancel();
+    }
+
+    _lastWords = '';
   }
 }

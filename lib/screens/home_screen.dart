@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import '../models/language.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/language_provider.dart';
 import '../widgets/language_selector.dart';
 import '../widgets/nexa_logo.dart';
 
+import 'call_setup_screen.dart';
 import 'conversation_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,19 +16,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Language idiomaPersona1 = idiomasDisponibles[0];
-  Language idiomaPersona2 = idiomasDisponibles[1];
-
   void intercambiarIdiomas() {
-    setState(() {
-      final temp = idiomaPersona1;
-      idiomaPersona1 = idiomaPersona2;
-      idiomaPersona2 = temp;
-    });
+    final provider = context.read<LanguageProvider>();
+
+    final temp = provider.person1Language;
+    provider.setPerson1Language(provider.person2Language);
+    provider.setPerson2Language(temp);
   }
 
   @override
   Widget build(BuildContext context) {
+    final languageProvider = context.watch<LanguageProvider>();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('NEXA Voice AI'),
@@ -33,20 +35,25 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 12,
+          ),
           child: Column(
             children: [
               const NexaLogo(),
 
-              const SizedBox(height: 35),
+              const SizedBox(height: 30),
 
               LanguageSelector(
                 titulo: '👤 Persona 1',
-                idiomaSeleccionado: idiomaPersona1,
+                idiomaSeleccionado: languageProvider.person1Language,
                 onChanged: (value) {
-                  setState(() {
-                    idiomaPersona1 = value!;
-                  });
+                  if (value != null) {
+                    context
+                        .read<LanguageProvider>()
+                        .setPerson1Language(value);
+                  }
                 },
               ),
 
@@ -68,11 +75,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
               LanguageSelector(
                 titulo: '👤 Persona 2',
-                idiomaSeleccionado: idiomaPersona2,
+                idiomaSeleccionado: languageProvider.person2Language,
                 onChanged: (value) {
-                  setState(() {
-                    idiomaPersona2 = value!;
-                  });
+                  if (value != null) {
+                    context
+                        .read<LanguageProvider>()
+                        .setPerson2Language(value);
+                  }
                 },
               ),
 
@@ -80,13 +89,46 @@ class _HomeScreenState extends State<HomeScreen> {
 
               SizedBox(
                 width: double.infinity,
-                height: 58,
                 child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  icon: const Icon(Icons.call),
+                  label: const Text(
+                    'INICIAR LLAMADA TRADUCIDA',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CallSetupScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.blue,
+                    side: const BorderSide(color: Colors.blue),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
                   icon: const Icon(Icons.mic),
                   label: const Text(
-                    'INICIAR CONVERSACIÓN',
+                    'CONVERSACIÓN EN PERSONA',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

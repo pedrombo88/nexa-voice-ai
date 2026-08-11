@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../../models/language.dart';
 import '../microphone_button.dart';
+import 'wave_animation.dart';
 
 class SpeakerPanel extends StatelessWidget {
   final Language language;
   final bool isListening;
   final VoidCallback onMicrophonePressed;
+  final VoidCallback? onMicrophoneReleased;
 
   const SpeakerPanel({
     super.key,
     required this.language,
     required this.isListening,
     required this.onMicrophonePressed,
+    this.onMicrophoneReleased,
   });
 
   @override
@@ -31,18 +34,20 @@ class SpeakerPanel extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              "${language.bandera} ${language.nombre}",
+              '${language.bandera} ${language.nombre}',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 20),
-
-            MicrophoneButton(
+            WaveAnimation(
               isListening: isListening,
-              onPressed: onMicrophonePressed,
+              child: MicrophoneButton(
+                isListening: isListening,
+                onPressed: onMicrophonePressed,
+                onReleased: onMicrophoneReleased,
+              ),
             ),
           ],
         ),

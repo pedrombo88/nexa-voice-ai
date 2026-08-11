@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-
+import '../managers/conversation_manager.dart';
 import '../models/conversation_mode.dart';
-import '../models/translation.dart';
 import '../providers/language_provider.dart';
-import '../providers/translation_provider.dart';
-import '../services/speech/speech_service.dart';
-import '../services/tts/tts_service.dart';
+
 import '../widgets/conversation/conversation_header.dart';
 import '../widgets/conversation/conversation_list.dart';
 import '../widgets/conversation/listening_indicator.dart';
@@ -17,140 +14,120 @@ class ConversationScreen extends StatefulWidget {
   const ConversationScreen({super.key});
 
   @override
-  State<ConversationScreen> createState() => _ConversationScreenState();
+  State<ConversationScreen> createState() =>
+      _ConversationScreenState();
 }
 
 class _ConversationScreenState extends State<ConversationScreen> {
-  
+  late final ConversationManager _manager;
 
-  final SpeechService _speechService = SpeechService();
-  final TtsService _ttsService = TtsService();
-  final _translator = TranslationProvider.getTranslator();
+  ConversationMode? _activeSpeaker;
 
-  bool _isListening = false;
-  ConversationMode? _currentMode;
+  @override
+  void initState() {
+    super.initState();
 
-  ListeningState _state = ListeningState.idle;
+    _manager = ConversationManager();
 
-  final List<Translation> _messages = [];
+    _initializeSpeech();
 
-  Future<void> _toggleListening(ConversationMode mode) async {
-    if (_isListening) {
-      await _speechService.stopListening();
+    _manager.addListener(_refresh);
+  }
 
-      if (!mounted) return;
+  Future<void> _initializeSpeech() async {
+    final ready = await _manager.initialize();
 
-      setState(() {
-        _isListening = false;
-        _currentMode = null;
-        _state = ListeningState.idle;
-      });
-
-      return;
-    }
-
-    final languageProvider = context.read<LanguageProvider>();
-
-    final source = mode == ConversationMode.person1
-        ? languageProvider.person1Language
-        : languageProvider.person2Language;
-
-    final target = mode == ConversationMode.person1
-        ? languageProvider.person2Language
-        : languageProvider.person1Language;
-
-    final initialized = await _speechService.initialize();
-
-    if (!initialized) {
-      if (!mounted) return;
-
+    if (!ready && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("No se pudo iniciar el reconocimiento de voz."),
+          content: Text(
+            'No se pudo acceder al micrófono. '
+            'Revisa el permiso en los Ajustes del teléfono.',
+          ),
         ),
       );
+    }
+  }
 
+  void _refresh() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _startListening(
+  ConversationMode mode,
+) async {
+  if (_manager.isListening) {
+    return;
+  }
+
+  _activeSpeaker = mode;
+
+  final languageProvider =
+      context.read<LanguageProvider>();
+
+  final source =
+      mode == ConversationMode.person1
+          ? languageProvider.person1Language
+          : languageProvider.person2Language;
+
+  await _manager.startListening(
+    speaker: mode,
+    source: source,
+  );
+}
+
+  Future<void> _releaseMicrophone() async {
+    if (_activeSpeaker == null) {
       return;
     }
 
-    setState(() {
-      _isListening = true;
-      _currentMode = mode;
-      _state = ListeningState.listening;
-    });
+    final mode = _activeSpeaker!;
 
-    final text = await _speechService.listen(
-      localeId: source.speechLocale,
+    _activeSpeaker = null;
+
+    final languageProvider =
+        context.read<LanguageProvider>();
+
+    final source =
+        mode == ConversationMode.person1
+            ? languageProvider.person1Language
+            : languageProvider.person2Language;
+
+    final target =
+        mode == ConversationMode.person1
+            ? languageProvider.person2Language
+            : languageProvider.person1Language;
+
+    final speakerId =
+        mode == ConversationMode.person1
+            ? 'persona1'
+            : 'persona2';
+
+    await _manager.processConversation(
+      source: source,
+      target: target,
+      speakerId: speakerId,
     );
-
-    if (!mounted) return;
-
-    if (text == null || text.isEmpty) {
-      setState(() {
-        _isListening = false;
-        _currentMode = null;
-        _state = ListeningState.idle;
-      });
-      return;
-    }
-
-    setState(() {
-      _state = ListeningState.translating;
-    });
-
-    final translated = await _translator.translate(
-      text: text,
-      sourceLanguage: source.codigo,
-      targetLanguage: target.codigo,
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _state = ListeningState.speaking;
-    });
-
-    await _ttsService.speak(
-      text: translated,
-      language: target.ttsLocale,
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _messages.add(
-        Translation(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          speakerId:
-              mode == ConversationMode.person1 ? "persona1" : "persona2",
-          originalText: text,
-          translatedText: translated,
-          sourceLanguage: source.codigo,
-          targetLanguage: target.codigo,
-          timestamp: DateTime.now(),
-        ),
-      );
-
-      _isListening = false;
-      _currentMode = null;
-      _state = ListeningState.idle;
-    });
   }
 
   @override
   void dispose() {
-    _speechService.stopListening();
-    _ttsService.stop();
+    _manager.removeListener(_refresh);
+    _manager.dispose();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final languageProvider = context.watch<LanguageProvider>();
+    final languageProvider =
+        context.watch<LanguageProvider>();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("NEXA Voice AI"),
+        title: const Text('NEXA Voice AI'),
         centerTitle: true,
       ),
       body: Column(
@@ -161,29 +138,43 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ),
 
           ListeningIndicator(
-            state: _state,
+            state: _manager.listeningState,
+          ),
+
+          Expanded(
+            child: ConversationList(
+              messages: _manager.history,
+            ),
           ),
 
           SpeakerPanel(
             language: languageProvider.person1Language,
             isListening:
-                _isListening && _currentMode == ConversationMode.person1,
-            onMicrophonePressed: () =>
-                _toggleListening(ConversationMode.person1),
-          ),
-
-          Expanded(
-            child: ConversationList(
-              messages: _messages,
-            ),
+                _manager.isListening &&
+                _manager.currentSpeaker ==
+                    ConversationMode.person1,
+            onMicrophonePressed: () {
+              _startListening(
+                ConversationMode.person1,
+              );
+            },
+            onMicrophoneReleased:
+                _releaseMicrophone,
           ),
 
           SpeakerPanel(
             language: languageProvider.person2Language,
             isListening:
-                _isListening && _currentMode == ConversationMode.person2,
-            onMicrophonePressed: () =>
-                _toggleListening(ConversationMode.person2),
+                _manager.isListening &&
+                _manager.currentSpeaker ==
+                    ConversationMode.person2,
+            onMicrophonePressed: () {
+              _startListening(
+                ConversationMode.person2,
+              );
+            },
+            onMicrophoneReleased:
+                _releaseMicrophone,
           ),
         ],
       ),

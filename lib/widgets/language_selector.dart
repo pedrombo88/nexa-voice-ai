@@ -33,16 +33,23 @@ class LanguageSelector extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 15),
-            DropdownButtonFormField<Language>(
+            DropdownButton<Language>(
               value: idiomaSeleccionado,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+              isExpanded: true,
+              style: const TextStyle(
+                fontSize: 17,
+                color: Colors.white,
+              ),
+              underline: Container(
+                height: 2,
+                color: Colors.blue.shade300,
               ),
               items: idiomasDisponibles.map((idioma) {
                 return DropdownMenuItem(
                   value: idioma,
                   child: Text(
                     "${idioma.bandera} ${idioma.nombre}",
+                    overflow: TextOverflow.ellipsis,
                   ),
                 );
               }).toList(),

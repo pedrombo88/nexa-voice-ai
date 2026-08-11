@@ -1,28 +1,30 @@
 import 'package:flutter/material.dart';
 
-import '../../models/translation.dart';
+import '../../models/call_turn.dart';
 import '../conversation_bubble.dart';
 
-class ConversationList extends StatefulWidget {
-  final List<Translation> messages;
+class CallTurnList extends StatefulWidget {
+  final List<CallTurn> turns;
+  final String myId;
 
-  const ConversationList({
+  const CallTurnList({
     super.key,
-    required this.messages,
+    required this.turns,
+    required this.myId,
   });
 
   @override
-  State<ConversationList> createState() => _ConversationListState();
+  State<CallTurnList> createState() => _CallTurnListState();
 }
 
-class _ConversationListState extends State<ConversationList> {
+class _CallTurnListState extends State<CallTurnList> {
   final ScrollController _scrollController = ScrollController();
 
   @override
-  void didUpdateWidget(covariant ConversationList oldWidget) {
+  void didUpdateWidget(covariant CallTurnList oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (widget.messages.length != oldWidget.messages.length) {
+    if (widget.turns.length != oldWidget.turns.length) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_scrollController.hasClients) return;
 
@@ -43,13 +45,13 @@ class _ConversationListState extends State<ConversationList> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.messages.isEmpty) {
+    if (widget.turns.isEmpty) {
       return const Center(
         child: Text(
-          "Pulsa un micrófono para comenzar la conversación",
+          'Mantén pulsado el micrófono para hablar',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 17,
             color: Colors.grey,
           ),
         ),
@@ -59,15 +61,15 @@ class _ConversationListState extends State<ConversationList> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
-      itemCount: widget.messages.length,
+      itemCount: widget.turns.length,
       itemBuilder: (context, index) {
-        final message = widget.messages[index];
+        final turn = widget.turns[index];
 
         return ConversationBubble(
-          speaker: message.speakerId,
-          originalText: message.originalText,
-          translatedText: message.translatedText,
-          isMe: message.speakerId == "persona1",
+          speaker: turn.senderName,
+          originalText: turn.originalText,
+          translatedText: turn.translatedText,
+          isMe: turn.senderId == widget.myId,
         );
       },
     );
