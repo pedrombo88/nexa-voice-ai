@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../managers/call_manager.dart';
 import '../models/language.dart';
+import '../providers/settings_provider.dart';
 import '../widgets/conversation/call_turn_list.dart';
 import '../widgets/conversation/wave_animation.dart';
 import '../widgets/microphone_button.dart';
@@ -11,6 +13,7 @@ class CallScreen extends StatefulWidget {
   final String sessionId;
   final String myName;
   final Language myLanguage;
+  final Language peerLanguage;
 
   const CallScreen({
     super.key,
@@ -18,6 +21,7 @@ class CallScreen extends StatefulWidget {
     this.sessionId = '',
     required this.myName,
     required this.myLanguage,
+    required this.peerLanguage,
   });
 
   @override
@@ -34,16 +38,23 @@ class _CallScreenState extends State<CallScreen> {
     _manager = CallManager();
     _manager.addListener(_refresh);
 
+    final speakTranslations =
+        context.read<SettingsProvider>().speakTranslations;
+
     if (widget.isCreator) {
       _manager.startCall(
         myName: widget.myName,
         myLanguage: widget.myLanguage,
+        peerLanguage: widget.peerLanguage,
+        speakTranslations: speakTranslations,
       );
     } else {
       _manager.joinCall(
         sessionId: widget.sessionId,
         myName: widget.myName,
         myLanguage: widget.myLanguage,
+        peerLanguage: widget.peerLanguage,
+        speakTranslations: speakTranslations,
       );
     }
   }

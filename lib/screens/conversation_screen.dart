@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../managers/conversation_manager.dart';
 import '../models/conversation_mode.dart';
 import '../providers/language_provider.dart';
+import '../providers/settings_provider.dart';
 
 import '../widgets/conversation/conversation_header.dart';
 import '../widgets/conversation/conversation_list.dart';
@@ -90,6 +91,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
     final languageProvider =
         context.read<LanguageProvider>();
 
+    final settingsProvider =
+        context.read<SettingsProvider>();
+
     final source =
         mode == ConversationMode.person1
             ? languageProvider.person1Language
@@ -109,6 +113,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       source: source,
       target: target,
       speakerId: speakerId,
+      speak: settingsProvider.speakTranslations,
     );
   }
 
@@ -124,6 +129,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
   Widget build(BuildContext context) {
     final languageProvider =
         context.watch<LanguageProvider>();
+
+    final settingsProvider =
+        context.watch<SettingsProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -149,6 +157,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
           SpeakerPanel(
             language: languageProvider.person1Language,
+            name: settingsProvider.person1Name,
+            photoPath: settingsProvider.person1PhotoPath,
             isListening:
                 _manager.isListening &&
                 _manager.currentSpeaker ==
@@ -164,6 +174,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
           SpeakerPanel(
             language: languageProvider.person2Language,
+            name: settingsProvider.person2Name,
+            photoPath: settingsProvider.person2PhotoPath,
             isListening:
                 _manager.isListening &&
                 _manager.currentSpeaker ==

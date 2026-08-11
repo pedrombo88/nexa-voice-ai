@@ -128,6 +128,7 @@ class ConversationManager extends ChangeNotifier {
     required Language source,
     required Language target,
     required String speakerId,
+    bool speak = true,
   }) async {
     if (_processing) {
       return;
@@ -183,6 +184,7 @@ class ConversationManager extends ChangeNotifier {
         source: source,
         target: target,
         speakerId: speakerId,
+        speak: speak,
       );
 
       if (translation == null) {
@@ -209,9 +211,7 @@ class ConversationManager extends ChangeNotifier {
 
       notifyListeners();
 
-      await Future<void>.delayed(
-        const Duration(milliseconds: 300),
-      );
+      await _engine.waitForSpeech();
 
       _state = _state.copyWith(
         isListening: false,

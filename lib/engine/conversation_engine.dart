@@ -13,6 +13,7 @@ class ConversationEngine {
   final _translator = TranslationProvider.getTranslator();
 
   bool _running = false;
+  Future<void>? _activeSpeak;
 
   bool get isRunning => _running;
 
@@ -53,6 +54,8 @@ class ConversationEngine {
       '${source.speechLocale}',
     );
 
+    await _ttsService.stop();
+
     return await _speechService.startListening(
       localeId: source.speechLocale,
     );
@@ -79,6 +82,7 @@ class ConversationEngine {
     required Language source,
     required Language target,
     required String speakerId,
+    bool speak = true,
   }) async {
     final text = originalText.trim();
 
@@ -109,18 +113,24 @@ class ConversationEngine {
         return null;
       }
 
-      debugPrint(
-        'NEXA ENGINE: SPEAKING '
-        '"$translatedText"',
-      );
+      if (speak) {
+        debugPrint(
+          'NEXA ENGINE: SPEAKING '
+          '"$translatedText"',
+        );
 
-      await _ttsService.speak(
-        text: translatedText,
-        language: target.ttsLocale,
-      );
-
-      if (!_running) {
-        return null;
+        // Reproducimos la voz sin bloquear: así el texto
+        // aparece en pantalla mientras se escucha la frase.
+        _activeSpeak = _ttsService
+            .speak(
+          text: translatedText,
+          language: target.ttsLocale,
+        )
+            .catchError((Object e) {
+          debugPrint('NEXA ENGINE SPEAK ERROR: $e');
+        });
+      } else {
+        _activeSpeak = null;
       }
 
       return Translation(
@@ -141,6 +151,26 @@ class ConversationEngine {
 
       return null;
     }
+  }
+
+  // ============================================================
+  // ESPERAR A QUE TERMINE LA VOZ
+  // ============================================================
+
+  Future<void> waitForSpeech() async {
+    final active = _activeSpeak;
+
+    if (active == null) {
+      return;
+    }
+
+    try {
+      await active;
+    } catch (e) {
+      debugPrint('NEXA ENGINE WAIT SPEECH ERROR: $e');
+    }
+
+    _activeSpeak = null;
   }
 
   // ============================================================
@@ -223,6 +253,8 @@ class ConversationEngine {
 
   Future<void> stop() async {
     _running = false;
+
+    _activeSpeak = null;
 
     await _speechService.stopListening();
 

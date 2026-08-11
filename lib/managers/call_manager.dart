@@ -49,6 +49,7 @@ class CallManager extends ChangeNotifier {
   bool _translating = false;
   bool _speaking = false;
   bool _disposed = false;
+  bool _speakTranslations = true;
 
   StreamSubscription<CallTurn>? _turnSub;
   StreamSubscription<CallParticipant?>? _peerSub;
@@ -86,6 +87,8 @@ class CallManager extends ChangeNotifier {
   Future<void> startCall({
     required String myName,
     required Language myLanguage,
+    required Language peerLanguage,
+    bool speakTranslations = true,
   }) async {
     if (isBusy) {
       return;
@@ -94,6 +97,7 @@ class CallManager extends ChangeNotifier {
     _state = CallConnectionState.creating;
     _myName = myName;
     _myLanguage = myLanguage;
+    _speakTranslations = speakTranslations;
     notifyListeners();
 
     try {
@@ -109,7 +113,9 @@ class CallManager extends ChangeNotifier {
 
       await _tts.initialize();
 
-      final relay = CallRelayFactory.create();
+      final relay = CallRelayFactory.create(
+        peerLanguageCode: peerLanguage.codigo,
+      );
       _relay = relay;
       _subscribeRelay();
 
@@ -138,6 +144,8 @@ class CallManager extends ChangeNotifier {
     required String sessionId,
     required String myName,
     required Language myLanguage,
+    required Language peerLanguage,
+    bool speakTranslations = true,
   }) async {
     if (isBusy) {
       return;
@@ -146,6 +154,7 @@ class CallManager extends ChangeNotifier {
     _state = CallConnectionState.joining;
     _myName = myName;
     _myLanguage = myLanguage;
+    _speakTranslations = speakTranslations;
     notifyListeners();
 
     try {
@@ -161,7 +170,9 @@ class CallManager extends ChangeNotifier {
 
       await _tts.initialize();
 
-      final relay = CallRelayFactory.create();
+      final relay = CallRelayFactory.create(
+        peerLanguageCode: peerLanguage.codigo,
+      );
       _relay = relay;
       _subscribeRelay();
 
@@ -269,13 +280,22 @@ class CallManager extends ChangeNotifier {
 
   Future<void> _onRemoteTurn(CallTurn turn) async {
     _history.add(turn);
+
+    if (!_speakTranslations) {
+      notifyListeners();
+      return;
+    }
+
     _speaking = true;
     notifyListeners();
 
     try {
+      final language =
+          idiomaPorCodigo(turn.targetLanguage) ?? _myLanguage;
+
       await _tts.speak(
         text: turn.translatedText,
-        language: _myLanguage.ttsLocale,
+        language: language.ttsLocale,
       );
     } catch (e) {
       debugPrint('NEXA CALL TTS ERROR: $e');

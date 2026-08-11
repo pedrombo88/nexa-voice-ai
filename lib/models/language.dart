@@ -106,3 +106,13 @@ const List<Language> idiomasDisponibles = [
     ttsLocale: 'hi-IN',
   ),
 ];
+
+Language? idiomaPorCodigo(String codigo) {
+  for (final idioma in idiomasDisponibles) {
+    if (idioma.codigo == codigo) {
+      return idioma;
+    }
+  }
+
+  return null;
+}

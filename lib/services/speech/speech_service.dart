@@ -6,6 +6,7 @@ class SpeechService {
 
   bool _initialized = false;
   String _lastWords = '';
+  bool _lastResultFinal = false;
 
   bool get isInitialized => _initialized;
 
@@ -59,6 +60,7 @@ class SpeechService {
     }
 
     _lastWords = '';
+    _lastResultFinal = false;
 
     debugPrint(
       'NEXA SPEECH: START LISTENING '
@@ -98,7 +100,7 @@ class SpeechService {
     await _speech.listen(
       listenOptions: SpeechListenOptions(
         localeId: localeId,
-        listenMode: ListenMode.confirmation,
+        listenMode: ListenMode.dictation,
         cancelOnError: false,
         partialResults: true,
         pauseFor: const Duration(seconds: 10),
@@ -116,6 +118,8 @@ class SpeechService {
         if (words.isNotEmpty) {
           _lastWords = words;
         }
+
+        _lastResultFinal = result.finalResult;
       },
     );
 
@@ -139,10 +143,14 @@ class SpeechService {
       }
 
       // El callback del resultado final puede llegar justo después
-      // de stop(). Sin este margen se pierden las últimas palabras.
-      if (_lastWords.trim().isEmpty) {
+      // de stop(). Esperamos hasta 800 ms a que llegue para no
+      // perder las últimas palabras de la frase.
+      final stopwatch = Stopwatch()..start();
+
+      while (!_lastResultFinal &&
+          stopwatch.elapsedMilliseconds < 800) {
         await Future<void>.delayed(
-          const Duration(milliseconds: 800),
+          const Duration(milliseconds: 50),
         );
       }
     }
@@ -172,6 +180,7 @@ class SpeechService {
     }
 
     _lastWords = '';
+    _lastResultFinal = false;
   }
 
   // ============================================================
@@ -210,5 +219,6 @@ class SpeechService {
     }
 
     _lastWords = '';
+    _lastResultFinal = false;
   }
 }

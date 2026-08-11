@@ -10,6 +10,15 @@ import 'call_relay.dart';
 /// Cada turno enviado se recibe de vuelta como si viniera del
 /// otro participante.
 class LocalEchoRelay implements CallRelay {
+  LocalEchoRelay({String peerLanguageCode = 'en'})
+      : _peer = CallParticipant(
+          id: 'remoto',
+          name: 'Demo (remoto)',
+          languageCode: peerLanguageCode,
+        );
+
+  final CallParticipant _peer;
+
   final StreamController<CallTurn> _turnController =
       StreamController<CallTurn>.broadcast();
 
@@ -18,12 +27,6 @@ class LocalEchoRelay implements CallRelay {
 
   String _sessionId = '';
   String _myId = '';
-
-  final CallParticipant _peer = const CallParticipant(
-    id: 'remoto',
-    name: 'Demo (remoto)',
-    languageCode: 'en',
-  );
 
   @override
   Stream<CallTurn> get onTurn => _turnController.stream;

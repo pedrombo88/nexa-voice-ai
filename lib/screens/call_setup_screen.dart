@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/language.dart';
 import '../providers/language_provider.dart';
+import '../providers/settings_provider.dart';
 import 'call_screen.dart';
 
 class CallSetupScreen extends StatefulWidget {
@@ -14,10 +15,21 @@ class CallSetupScreen extends StatefulWidget {
 
 class _CallSetupScreenState extends State<CallSetupScreen> {
   final TextEditingController _nameController =
-      TextEditingController(text: 'Yo');
+      TextEditingController();
 
   final TextEditingController _codeController =
       TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    final configuredName =
+        context.read<SettingsProvider>().person1Name;
+
+    _nameController.text =
+        configuredName == 'Persona 1' ? 'Yo' : configuredName;
+  }
 
   @override
   void dispose() {
@@ -26,7 +38,7 @@ class _CallSetupScreenState extends State<CallSetupScreen> {
     super.dispose();
   }
 
-  void _startCall(Language myLanguage) {
+  void _startCall(Language myLanguage, Language peerLanguage) {
     final name = _nameController.text.trim();
 
     if (name.isEmpty) {
@@ -43,12 +55,13 @@ class _CallSetupScreenState extends State<CallSetupScreen> {
           isCreator: true,
           myName: name,
           myLanguage: myLanguage,
+          peerLanguage: peerLanguage,
         ),
       ),
     );
   }
 
-  void _joinCall(Language myLanguage) {
+  void _joinCall(Language myLanguage, Language peerLanguage) {
     final name = _nameController.text.trim();
     final code = _codeController.text.trim();
 
@@ -74,6 +87,7 @@ class _CallSetupScreenState extends State<CallSetupScreen> {
           sessionId: code,
           myName: name,
           myLanguage: myLanguage,
+          peerLanguage: peerLanguage,
         ),
       ),
     );
@@ -148,6 +162,32 @@ class _CallSetupScreenState extends State<CallSetupScreen> {
                 },
               ),
 
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<Language>(
+                initialValue: languageProvider.person2Language,
+                decoration: const InputDecoration(
+                  labelText: 'Idioma de la otra persona',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.groups),
+                ),
+                items: idiomasDisponibles.map((language) {
+                  return DropdownMenuItem<Language>(
+                    value: language,
+                    child: Text(
+                      '${language.bandera} ${language.nombre}',
+                    ),
+                  );
+                }).toList(),
+                onChanged: (language) {
+                  if (language != null) {
+                    context
+                        .read<LanguageProvider>()
+                        .setPerson2Language(language);
+                  }
+                },
+              ),
+
               const SizedBox(height: 28),
 
               SizedBox(
@@ -163,6 +203,7 @@ class _CallSetupScreenState extends State<CallSetupScreen> {
                   ),
                   onPressed: () => _startCall(
                     languageProvider.person1Language,
+                    languageProvider.person2Language,
                   ),
                 ),
               ),
@@ -198,6 +239,7 @@ class _CallSetupScreenState extends State<CallSetupScreen> {
                   ),
                   onPressed: () => _joinCall(
                     languageProvider.person1Language,
+                    languageProvider.person2Language,
                   ),
                 ),
               ),

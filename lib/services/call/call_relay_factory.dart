@@ -6,11 +6,14 @@ import 'local_echo_relay.dart';
 class CallRelayFactory {
   /// Devuelve el relay configurado: Firebase (dos teléfonos) o
   /// modo demo local (un solo dispositivo).
-  static CallRelay create() {
+  ///
+  /// En modo demo, [peerLanguageCode] define el idioma del participante
+  /// remoto simulado.
+  static CallRelay create({String peerLanguageCode = 'en'}) {
     if (AppConfig.firebaseRelayEnabled) {
       return FirebaseCallRelay();
     }
 
-    return LocalEchoRelay();
+    return LocalEchoRelay(peerLanguageCode: peerLanguageCode);
   }
 }

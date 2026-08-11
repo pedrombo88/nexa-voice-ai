@@ -1,4 +1,4 @@
-package com.example.nexa_voice_ai
+package com.nexa.voiceai
 
 import io.flutter.embedding.android.FlutterActivity
 
